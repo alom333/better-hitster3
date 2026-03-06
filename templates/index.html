@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎵 Music Time Machine</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    /* ── Tokens ── */
+    :root {
+      --bg:         #060610;
+      --surface:    #0e0e20;
+      --surface2:   #161628;
+      --border:     rgba(255,255,255,0.07);
+      --border2:    rgba(255,255,255,0.13);
+
+      --neon-pink:   #ff2d78;
+      --neon-cyan:   #00f5d4;
+      --neon-yellow: #ffe135;
+      --neon-purple: #b36eff;
+      --neon-orange: #ff7043;
+      --neon-green:  #00e676;
+
+      --text:        #f0f0ff;
+      --muted:       rgba(240,240,255,0.38);
+      --font-display: 'Bebas Neue', sans-serif;
+      --font-body:    'DM Sans', sans-serif;
+      --font-mono:    'Space Mono', monospace;
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+
+    /* ── Background layers ── */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .bg-glow {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 70% 50% at 15% 10%, rgba(179,110,255,.14) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 85% 90%, rgba(255,45,120,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 55% 50%, rgba(0,245,212,.06) 0%, transparent 60%);
+    }
+    /* floating orbs */
+    .orb {
+      position: fixed; border-radius: 50%; filter: blur(80px);
+      pointer-events: none; z-index: 0; animation: drift 18s ease-in-out infinite alternate;
+    }
+    .orb-1 { width:320px; height:320px; background:rgba(179,110,255,.18); top:-60px; left:-80px; animation-duration:20s; }
+    .orb-2 { width:240px; height:240px; background:rgba(255,45,120,.15); bottom:-40px; right:-60px; animation-duration:15s; animation-delay:-7s; }
+    .orb-3 { width:180px; height:180px; background:rgba(0,245,212,.10); top:40%; right:10%; animation-duration:12s; animation-delay:-3s; }
+    @keyframes drift {
+      from { transform: translate(0,0) scale(1); }
+      to   { transform: translate(30px,40px) scale(1.1); }
+    }
+
+    /* ── Layout ── */
+    .page {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 500px;
+      padding: 2.5rem 1.5rem 3rem;
+      display: flex; flex-direction: column; align-items: center; gap: 2rem;
+    }
+
+    /* ── Header ── */
+    .header { text-align: center; }
+    .header-eyebrow {
+      font-family: var(--font-mono);
+      font-size: .7rem; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--neon-cyan); margin-bottom: .5rem;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+    }
+    .header-eyebrow::before,
+    .header-eyebrow::after { content:''; flex:1; max-width:40px; height:1px; background: var(--neon-cyan); opacity:.4; }
+    .header h1 {
+      font-family: var(--font-display);
+      font-size: clamp(3rem, 10vw, 4.5rem);
+      letter-spacing: .04em;
+      line-height: .95;
+      background: linear-gradient(130deg, var(--neon-yellow) 0%, var(--neon-pink) 50%, var(--neon-purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 30px rgba(255,45,120,.4));
+    }
+    .header-sub {
+      font-family: var(--font-mono); font-size: .75rem;
+      color: var(--muted); margin-top: .5rem; letter-spacing: .05em;
+    }
+
+    /* ── Vinyl ── */
+    .vinyl-stage {
+      position: relative; width: 200px; height: 200px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    /* glow ring that pulses when playing */
+    .vinyl-glow {
+      position: absolute; inset: -18px; border-radius: 50%;
+      background: conic-gradient(
+        var(--neon-pink) 0deg, var(--neon-purple) 120deg,
+        var(--neon-cyan) 240deg, var(--neon-pink) 360deg
+      );
+      opacity: 0; filter: blur(16px);
+      animation: glow-pulse 2s ease-in-out infinite;
+      transition: opacity .6s;
+    }
+    .vinyl-glow.active { opacity: .7; }
+    @keyframes glow-pulse { 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.07); } }
+
+    .vinyl-ring {
+      position: absolute; inset: -6px; border-radius: 50%;
+      background: conic-gradient(
+        var(--neon-pink), var(--neon-purple), var(--neon-cyan),
+        var(--neon-yellow), var(--neon-pink)
+      );
+      opacity: 0; transition: opacity .5s;
+      animation: spin-ring 3s linear infinite;
+    }
+    .vinyl-ring.active { opacity: 1; }
+    @keyframes spin-ring { to { transform: rotate(360deg); } }
+    /* mask so ring looks like border */
+    .vinyl-ring::after {
+      content:''; position:absolute; inset:3px; border-radius:50%; background:var(--bg);
+    }
+
+    .vinyl {
+      width: 200px; height: 200px; border-radius: 50%;
+      background:
+        repeating-conic-gradient(#1a1a2e 0deg .5deg, #0f0f1e .5deg 1deg) 50% / 100% 100%,
+        radial-gradient(circle at 50%,#2a2a3e 0%,#0a0a16 100%);
+      background-blend-mode: overlay;
+      box-shadow: inset 0 0 30px rgba(0,0,0,.8), 0 8px 40px rgba(0,0,0,.6);
+      animation: spin-vinyl 3s linear infinite;
+      animation-play-state: paused;
+      position: relative; z-index: 1;
+      transition: box-shadow .4s;
+    }
+    .vinyl.playing {
+      animation-play-state: running;
+      box-shadow: inset 0 0 30px rgba(0,0,0,.8), 0 8px 60px rgba(179,110,255,.3);
+    }
+    @keyframes spin-vinyl { to { transform: rotate(360deg); } }
+
+    /* grooves */
+    .vinyl::before {
+      content:'';
+      position: absolute; inset: 12%; border-radius: 50%;
+      box-shadow:
+        0 0 0 4px rgba(255,255,255,.04),
+        0 0 0 10px rgba(255,255,255,.03),
+        0 0 0 18px rgba(255,255,255,.025),
+        0 0 0 28px rgba(255,255,255,.02),
+        0 0 0 40px rgba(255,255,255,.015);
+    }
+    /* center label */
+    .vinyl-label {
+      position: absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      width: 64px; height: 64px; border-radius: 50%;
+      background: var(--surface2);
+      border: 2px solid rgba(255,255,255,.08);
+      overflow: hidden; z-index: 2;
+      transition: box-shadow .4s;
+    }
+    .vinyl-label img {
+      width: 100%; height: 100%; object-fit: cover;
+      opacity: 0; transition: opacity .5s;
+    }
+    .vinyl-label img.visible { opacity: 1; }
+    .vinyl-label-default {
+      position: absolute; inset: 0; display: flex; align-items:center; justify-content:center;
+      font-size: 1.6rem; transition: opacity .3s;
+    }
+    .vinyl-label-default.hidden { opacity: 0; }
+    /* center pin */
+    .vinyl-pin {
+      position: absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--neon-cyan); z-index: 3;
+      box-shadow: 0 0 6px var(--neon-cyan);
+    }
+
+    /* ── Now playing chip ── */
+    .now-playing-chip {
+      display: flex; align-items: center; gap: .5rem;
+      background: rgba(0,245,212,.08); border: 1px solid rgba(0,245,212,.2);
+      border-radius: 999px; padding: .3rem .9rem;
+      font-family: var(--font-mono); font-size: .7rem;
+      color: var(--neon-cyan); letter-spacing: .05em;
+      opacity: 0; transition: opacity .4s;
+    }
+    .now-playing-chip.visible { opacity: 1; }
+    .eq-mini { display:flex; gap:2px; align-items:flex-end; height:14px; }
+    .eq-mini-bar {
+      width:3px; border-radius:2px; background: var(--neon-cyan);
+      animation: eq-bounce .7s ease-in-out infinite alternate;
+    }
+    .eq-mini-bar:nth-child(1){ height:40%; animation-delay:0s; }
+    .eq-mini-bar:nth-child(2){ height:100%; animation-delay:.15s; }
+    .eq-mini-bar:nth-child(3){ height:60%; animation-delay:.3s; }
+    .eq-mini-bar:nth-child(4){ height:80%; animation-delay:.1s; }
+    .eq-mini-bar:nth-child(5){ height:30%; animation-delay:.25s; }
+    .eq-mini.paused .eq-mini-bar { animation-play-state: paused; }
+    @keyframes eq-bounce { from{ transform:scaleY(.2); } to{ transform:scaleY(1); } }
+
+    /* ── Reveal card ── */
+    .reveal-card {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0;
+      opacity: 0; transform: translateY(16px) scale(.97);
+      transition: opacity .45s cubic-bezier(.4,0,.2,1), transform .45s cubic-bezier(.4,0,.2,1);
+      pointer-events: none;
+    }
+    .reveal-card.visible { opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
+
+    .reveal-album-wrap {
+      width: 110px; height: 110px; flex-shrink: 0;
+      background: var(--surface2); position: relative; overflow: hidden;
+    }
+    .reveal-album-wrap img {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block;
+    }
+    .reveal-album-placeholder {
+      position: absolute; inset: 0;
+      display: flex; align-items:center; justify-content:center;
+      font-size: 2.5rem;
+    }
+
+    .reveal-info {
+      padding: 1rem 1.2rem;
+      display: flex; flex-direction: column; justify-content: center; gap: .2rem;
+      min-width: 0;
+    }
+    .reveal-year-label {
+      font-family: var(--font-mono); font-size: .6rem; letter-spacing: .15em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .reveal-year {
+      font-family: var(--font-display);
+      font-size: 3.6rem; line-height: 1;
+      background: linear-gradient(120deg, var(--neon-yellow), var(--neon-orange));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      filter: drop-shadow(0 0 12px rgba(255,225,53,.5));
+      letter-spacing: .03em;
+    }
+    .reveal-title {
+      font-size: 1rem; font-weight: 700; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-top: .1rem;
+    }
+    .reveal-artist {
+      font-size: .8rem; color: var(--muted);
+    }
+
+    /* ── Buttons ── */
+    .btn-group {
+      width: 100%; display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .75rem;
+    }
+
+    .btn {
+      border: none; cursor: pointer;
+      font-family: var(--font-body); font-size: .95rem; font-weight: 700;
+      border-radius: 14px; padding: .9rem 1rem;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      transition: transform .15s, box-shadow .2s, opacity .2s, filter .2s;
+      position: relative; overflow: hidden; letter-spacing: .01em;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); }
+    .btn:active:not(:disabled) { transform: translateY(0); filter: brightness(.95); }
+    .btn:disabled { opacity: .3; cursor: not-allowed; }
+
+    /* Spotify login */
+    .btn-spotify {
+      background: #1db954; color: #fff;
+      box-shadow: 0 4px 24px rgba(29,185,84,.3);
+      grid-column: 1 / -1;
+    }
+    .btn-spotify:hover:not(:disabled) { box-shadow: 0 6px 32px rgba(29,185,84,.5); }
+
+    /* Logout */
+    .btn-logout {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border2); font-size: .75rem;
+      padding: .4rem 1rem; border-radius: 999px;
+      grid-column: 1 / -1; width: fit-content; margin: -.5rem auto 0;
+    }
+
+    /* New Song */
+    .btn-new {
+      background: linear-gradient(135deg, var(--neon-purple), var(--neon-pink));
+      color: #fff;
+      box-shadow: 0 4px 24px rgba(179,110,255,.3);
+    }
+    .btn-new:hover:not(:disabled) { box-shadow: 0 6px 36px rgba(255,45,120,.45); }
+
+    /* Reveal */
+    .btn-reveal {
+      background: linear-gradient(135deg, var(--neon-yellow), var(--neon-orange));
+      color: #0a0a14;
+      box-shadow: 0 4px 24px rgba(255,225,53,.25);
+    }
+    .btn-reveal:hover:not(:disabled) { box-shadow: 0 6px 36px rgba(255,112,67,.45); }
+    .btn-reveal.active {
+      background: rgba(255,225,53,.1);
+      color: var(--neon-yellow);
+      border: 1px solid rgba(255,225,53,.3);
+      box-shadow: none;
+    }
+
+    /* Pause */
+    .btn-pause {
+      background: var(--surface2);
+      color: var(--neon-cyan);
+      border: 1px solid rgba(0,245,212,.25);
+      box-shadow: 0 4px 20px rgba(0,245,212,.08);
+      grid-column: 1 / -1;
+      font-size: 1rem;
+    }
+    .btn-pause:hover:not(:disabled) {
+      background: rgba(0,245,212,.07);
+      box-shadow: 0 6px 30px rgba(0,245,212,.22);
+    }
+
+    /* pause icon components */
+    .icon-pause { display:flex; gap:3px; align-items:center; }
+    .pause-bar  { width:4px; height:16px; border-radius:2px; background: currentColor; }
+    .icon-play  { display:flex; align-items:center; }
+    .play-tri   { width:0; height:0;
+                  border-top:8px solid transparent;
+                  border-bottom:8px solid transparent;
+                  border-left:14px solid currentColor; }
+
+    /* Spinner */
+    .spinner {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.25);
+      border-top-color: currentColor;
+      animation: spin-loader .7s linear infinite;
+    }
+    @keyframes spin-loader { to { transform: rotate(360deg); } }
+
+    /* ── Status ── */
+    .status-row {
+      min-height: 1.6rem;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      font-family: var(--font-mono); font-size: .72rem; letter-spacing: .04em;
+      color: var(--muted); transition: color .3s;
+    }
+    .status-row.error   { color: #ff6b6b; }
+    .status-row.success { color: var(--neon-green); }
+    .status-row.loading { color: var(--neon-cyan); }
+
+    /* ── Warning box ── */
+    .device-warning {
+      width: 100%;
+      background: rgba(255,112,67,.08);
+      border: 1px solid rgba(255,112,67,.3);
+      border-radius: 12px; padding: .75rem 1rem;
+      font-size: .8rem; color: var(--neon-orange);
+      text-align: center; display: none;
+    }
+    .device-warning.visible { display: block; }
+
+    /* ── Ticker tape ── */
+    .ticker-wrap {
+      width: 100%; overflow: hidden;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: .35rem 0;
+    }
+    .ticker-inner {
+      display: flex; gap: 2.5rem;
+      animation: ticker 22s linear infinite;
+      white-space: nowrap;
+    }
+    .ticker-item {
+      font-family: var(--font-mono); font-size: .65rem;
+      letter-spacing: .08em; color: var(--muted);
+      text-transform: uppercase;
+    }
+    .ticker-item span { color: var(--neon-pink); }
+    @keyframes ticker { from{ transform:translateX(0); } to{ transform:translateX(-50%); } }
+
+  </style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-eyebrow">Spotify · Time Travel</div>
+    <h1>MUSIC<br>TIME MACHINE</h1>
+    <div class="header-sub">Can you guess the year?</div>
+  </div>
+
+  <!-- Ticker -->
+  <div class="ticker-wrap">
+    <div class="ticker-inner">
+      <span class="ticker-item">🎸 1955 → 2023 <span>·</span></span>
+      <span class="ticker-item">Guess the year <span>·</span></span>
+      <span class="ticker-item">🎵 Artist &amp; song <span>·</span></span>
+      <span class="ticker-item">How well do you know music? <span>·</span></span>
+      <span class="ticker-item">🎸 1955 → 2023 <span>·</span></span>
+      <span class="ticker-item">Guess the year <span>·</span></span>
+      <span class="ticker-item">🎵 Artist &amp; song <span>·</span></span>
+      <span class="ticker-item">How well do you know music? <span>·</span></span>
+    </div>
+  </div>
+
+  <!-- Vinyl -->
+  <div class="vinyl-stage">
+    <div class="vinyl-glow" id="vinylGlow"></div>
+    <div class="vinyl-ring" id="vinylRing"></div>
+    <div class="vinyl" id="vinyl">
+      <div class="vinyl-label" id="vinylLabel">
+        <img src="" alt="" id="vinylArt"/>
+        <div class="vinyl-label-default" id="labelDefault">🎵</div>
+      </div>
+      <div class="vinyl-pin"></div>
+    </div>
+  </div>
+
+  <!-- Now playing chip -->
+  <div class="now-playing-chip" id="nowPlayingChip">
+    <div class="eq-mini paused" id="eqMini">
+      <div class="eq-mini-bar"></div><div class="eq-mini-bar"></div>
+      <div class="eq-mini-bar"></div><div class="eq-mini-bar"></div>
+      <div class="eq-mini-bar"></div>
+    </div>
+    <span id="chipText">Now playing…</span>
+  </div>
+
+  <!-- Reveal card -->
+  <div class="reveal-card" id="revealCard">
+    <div class="reveal-album-wrap">
+      <img src="" alt="album art" id="revealAlbum"/>
+      <div class="reveal-album-placeholder" id="albumPlaceholder">🎶</div>
+    </div>
+    <div class="reveal-info">
+      <div class="reveal-year-label">Release Year</div>
+      <div class="reveal-year" id="revealYear">—</div>
+      <div class="reveal-title" id="revealTitle">—</div>
+      <div class="reveal-artist" id="revealArtist">—</div>
+    </div>
+  </div>
+
+  <!-- Device warning -->
+  <div class="device-warning" id="deviceWarning">
+    ⚠️ No active Spotify device found. Open Spotify on any device first, then try again.
+  </div>
+
+  <!-- Buttons -->
+  <div class="btn-group" id="btnGroup">
+    {% if not logged_in %}
+      <button class="btn btn-spotify" onclick="location.href='/login'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.434-5.305-1.76-8.786-.963-.335.077-.67-.133-.746-.47-.077-.334.132-.67.47-.745 3.808-.87 7.076-.496 9.712 1.115.293.18.386.563.207.856zm1.223-2.722c-.226.367-.706.482-1.072.257-2.687-1.652-6.785-2.131-9.965-1.166-.413.127-.848-.106-.973-.517-.125-.413.108-.848.52-.973 3.632-1.102 8.147-.568 11.233 1.329.366.226.48.707.257 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71c-.493.15-1.016-.129-1.166-.623-.148-.495.13-1.017.625-1.167 3.532-1.073 9.404-.866 13.115 1.337.445.264.59.838.327 1.282-.264.443-.838.59-1.284.328z"/>
+        </svg>
+        Connect with Spotify
+      </button>
+    {% else %}
+      <button class="btn btn-logout" onclick="location.href='/logout'">Disconnect ✕</button>
+
+      <button class="btn btn-new" id="btnNew" onclick="newSong()">
+        <span id="btnNewContent">🎲&nbsp; New Song</span>
+      </button>
+
+      <button class="btn btn-reveal" id="btnReveal" onclick="toggleReveal()" disabled>
+        <span id="btnRevealContent">👁&nbsp; Reveal</span>
+      </button>
+
+      <button class="btn btn-pause" id="btnPause" onclick="togglePlayback()" disabled>
+        <span id="pauseIcon"><span class="icon-pause"><div class="pause-bar"></div><div class="pause-bar"></div></span></span>
+        <span id="pauseLabel">Pause</span>
+      </button>
+    {% endif %}
+  </div>
+
+  <!-- Status -->
+  <div class="status-row" id="status">
+    {% if not logged_in %}
+      Connect your Spotify account to play ↑
+    {% else %}
+      Press New Song to start 🎵
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+  let currentSong = null;
+  let isPlaying   = false;
+  let revealed    = false;
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function setStatus(msg, type = '') {
+    const el = document.getElementById('status');
+    el.textContent  = msg;
+    el.className    = 'status-row ' + type;
+  }
+
+  function setPlaying(active) {
+    isPlaying = active;
+    const vinyl = document.getElementById('vinyl');
+    const glow  = document.getElementById('vinylGlow');
+    const ring  = document.getElementById('vinylRing');
+    const eq    = document.getElementById('eqMini');
+
+    vinyl.classList.toggle('playing', active);
+    glow.classList.toggle('active',   active);
+    ring.classList.toggle('active',   active);
+
+    if (eq) active ? eq.classList.remove('paused') : eq.classList.add('paused');
+
+    // Pause button icon
+    const iconEl = document.getElementById('pauseIcon');
+    if (iconEl) {
+      iconEl.innerHTML = active
+        ? '<span class="icon-pause"><div class="pause-bar"></div><div class="pause-bar"></div></span>'
+        : '<span class="icon-play"><div class="play-tri"></div></span>';
+    }
+    const lbl = document.getElementById('pauseLabel');
+    if (lbl) lbl.textContent = active ? 'Pause' : 'Resume';
+  }
+
+  // ── New Song ──────────────────────────────────────────────────────────────
+  async function newSong() {
+    const btn     = document.getElementById('btnNew');
+    const content = document.getElementById('btnNewContent');
+    btn.disabled  = true;
+    content.innerHTML = '<div class="spinner"></div>';
+    setStatus('Travelling through time…', 'loading');
+
+    // Reset UI
+    hideReveal(false);
+    setPlaying(false);
+    document.getElementById('deviceWarning').classList.remove('visible');
+    document.getElementById('nowPlayingChip').classList.remove('visible');
+
+    const art = document.getElementById('vinylArt');
+    art.src = ''; art.classList.remove('visible');
+    document.getElementById('labelDefault').classList.remove('hidden');
+
+    try {
+      const res  = await fetch('/api/random-song');
+      const data = await res.json();
+
+      if (data.error === 'not_logged_in') {
+        setStatus('Please log in first.', 'error'); return;
+      }
+      if (data.error) {
+        setStatus("Couldn't find a track — try again!", 'error'); return;
+      }
+
+      currentSong = data;
+
+      if (data.album_art) {
+        art.src = data.album_art;
+        art.onload = () => {
+          art.classList.add('visible');
+          document.getElementById('labelDefault').classList.add('hidden');
+        };
+      }
+
+      if (!data.played) {
+        document.getElementById('deviceWarning').classList.add('visible');
+        setStatus('Song found but Spotify isn\'t playing. Is Spotify open?', 'error');
+      } else {
+        setPlaying(true);
+        setStatus('🎵 A song is playing — can you guess the year?', 'success');
+        document.getElementById('nowPlayingChip').classList.add('visible');
+        document.getElementById('chipText').textContent = 'Now playing…';
+      }
+
+      document.getElementById('btnReveal').disabled = false;
+      document.getElementById('btnPause').disabled  = false;
+
+    } catch (e) {
+      setStatus('Something went wrong. Try again!', 'error');
+    } finally {
+      btn.disabled    = false;
+      content.innerHTML = '🎲&nbsp; New Song';
+    }
+  }
+
+  // ── Reveal ────────────────────────────────────────────────────────────────
+  function toggleReveal() {
+    if (!currentSong) return;
+    revealed ? hideReveal(true) : showReveal();
+  }
+
+  function showReveal() {
+    const card = document.getElementById('revealCard');
+
+    document.getElementById('revealYear').textContent   = currentSong.year   || '—';
+    document.getElementById('revealTitle').textContent  = currentSong.title  || '—';
+    document.getElementById('revealArtist').textContent = currentSong.artist || '—';
+
+    const img         = document.getElementById('revealAlbum');
+    const placeholder = document.getElementById('albumPlaceholder');
+    if (currentSong.album_art) {
+      img.src = currentSong.album_art;
+      img.style.display  = 'block';
+      placeholder.style.display = 'none';
+    } else {
+      img.style.display  = 'none';
+      placeholder.style.display = 'flex';
+    }
+
+    card.classList.add('visible');
+    revealed = true;
+
+    const btn = document.getElementById('btnReveal');
+    btn.classList.add('active');
+    document.getElementById('btnRevealContent').innerHTML = '🙈&nbsp; Hide';
+  }
+
+  function hideReveal(resetBtn = true) {
+    document.getElementById('revealCard').classList.remove('visible');
+    revealed = false;
+    if (resetBtn) {
+      const btn = document.getElementById('btnReveal');
+      if (btn) {
+        btn.classList.remove('active');
+        document.getElementById('btnRevealContent').innerHTML = '👁&nbsp; Reveal';
+      }
+    }
+  }
+
+  // ── Playback ──────────────────────────────────────────────────────────────
+  async function togglePlayback() {
+    const btn = document.getElementById('btnPause');
+    btn.disabled = true;
+    try {
+      const endpoint = isPlaying ? '/api/pause' : '/api/resume';
+      const res  = await fetch(endpoint, { method: 'POST' });
+      const data = await res.json();
+      if (data.status === 200 || data.status === 204) {
+        setPlaying(!isPlaying);
+        setStatus(isPlaying ? '▶️ Playing…' : '⏸ Paused', isPlaying ? 'success' : '');
+        const eq = document.getElementById('eqMini');
+        if (eq) isPlaying ? eq.classList.remove('paused') : eq.classList.add('paused');
+      } else {
+        setStatus('Playback error — is Spotify open?', 'error');
+      }
+    } catch (e) {
+      setStatus('Playback error — try again.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
